@@ -111,7 +111,7 @@ init_min_jerk_task(void)
   // re-use the variable target for our min-jerk movement: only the right arm moves
   target[R_SFE].th += 0.4;
   target[R_SAA].th -= 0.4;
-  target[R_EB].th  += 0.5;
+  target[R_EB].th  -= 0.5;
 
   // ready to go
   ans = 999;
@@ -220,6 +220,37 @@ change_min_jerk_task(void)
 }
 
 
+
+
+
+static double getX(double xf, double x, double xd, double xdd, double t) {
+  double res1 = 2*xf - 2*x - 2*t*xd - xdd*t*t;
+  double res2 = 2.0 * t*t*t;
+  return res1 / res2;
+}
+
+static double getY(double xfd, double xd, double xdd, double t) {
+  double res1 = xfd - xd - t*xdd;
+  double res2 = t*t;
+  return res1 / res2;
+}
+
+static double getZ(double xfdd, double xdd, double t) {
+  double res1 = xfdd - xdd;
+  double res2 = t;
+  return res1 / res2;
+}
+
+static double getC3(double x, double xd, double xdd, double xf, double xfd, double xfdd, double t) {
+  double res1 = 20*getX(xf, x, xd, xdd, t) - 8*getY(xfd, xd, xdd, t) + getZ(xfdd, xdd, t); 
+  return res1 / 2.0;
+}
+
+static double get_xddd(double x, double xd, double xdd, double xf, double xfd, double xfdd, double t) {
+  return 6 * getC3(x, xd, xdd, xf, xfd, xfdd, t) ;
+}
+//
+
 /*!*****************************************************************************
  *******************************************************************************
 \note  min_jerk_next_step
@@ -249,54 +280,16 @@ min_jerk_next_step (double x,double xd, double xdd, double t, double td, double 
 
   // your code goes here ...
   double xddd = get_xddd(x, xd, xdd, t, td, tdd, t_togo);
-  xdd_next = xdd + xddd * dt;
-  xd_next = xd + xdd * dt;
-  x_next = x + xd * dt;
-
+  *x_next = x + *xd_next * dt;
+ 
+  *xd_next = xd + *xdd_next * dt;
+  *xdd_next = xdd + xddd * dt;
   return TRUE;
 }
 
 
 
 
-static int get_c3(double x, double xd, double x, double xf, double xfd, double xfdd, double t) {
-  double res1 = 20*getX(xf, x, xd, xdd, t) - 8*getY(xfd, xd, xdd, t) + getZ(xfdd, xdd, t); 
-  return res1 / 2.0;
-}
-
-// static int get_c4(double x, double xd, double x, double xf, double xfd, double xfdd, double t) {
-//   double res1 = -15*getX(xf, x, xd, xdd, t) + 7*getY(xfd, xd, xdd, t) - getZ(xfdd, xdd, t); 
-//   return res1 / t;
-// }
-
-
-// static int get_c5(double x, double xd, double x, double xf, double xfd, double xfdd, double t) {
-//   double res1 = 12*getX(xf, x, xd, xdd, t) - 6*getY(xfd, xd, xdd, t) + getZ(xfdd, xdd, t); 
-//   double res2 = 2*t*t;
-//   return res1 / res2;
-// }
-
-static double getX(double xf, double x, double xd, double xdd, double t) {
-  double res1 = 2*xf - 2*x - 2*t*xd - xdd*t*t;
-  double res2 = 2.0 * t*t*t;
-  return res1 / res2;
-}
-
-static double getY(double xfd, double xd, double xdd, double t) {
-  double res1 = xfd - xd - t*xdd;
-  double res2 = t*t;
-  return res1 / res2;
-}
-
-static double getZ(double xfdd, double xdd, double t) {
-  double res1 = xfdd - xdd;
-  double res2 = t;
-  return res1 / res2;
-}
-
-static int get_xddd(double x, double xd, double x, double xf, double xfd, double xfdd, double t) {
-  return 6 * getC3(x, xd, xdd, xf, xfd, xfdd, t) ;
-}
 
 
 
