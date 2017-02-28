@@ -1,5 +1,5 @@
 matrix = [];
-max_time = 2;
+max_time = 1;
 step = 0.001;
 t = 0;
 x = 0;
