@@ -33,6 +33,7 @@ static double      delta_t = 0.01;
 static double      duration = 1.0;
 static double      time_to_go;
 static int count = 0;
+static int mode = 2; //[1] original mode  [2] question-e mode
 
 // global functions 
 extern "C" void
@@ -187,38 +188,43 @@ run_min_jerk_task(void)
   // compute inverse dynamics torques
   SL_InvDynNE(joint_state,joint_des_state,endeff,&base_state,&base_orient);
   
-
-   
-
-
   // decrement time to go
   time_to_go -= delta_t;
-  if (count == 1) {
-    time_to_go = duration;
-    count++;
-    target[L_SFE].th += 0.5;
-    run_min_jerk_task();
+  
+  if ( time_to_go <= 0) {
+    if (count == 0) {
+      time_to_go = duration;
+      target[L_SFE].th -= 0.2;
+      run_min_jerk_task();
+      count++;
 
-  } 
-  else if (count == 2) {
-    time_to_go = duration;
-    count++;
-    target[L_EB].th += 0.5;
-    run_min_jerk_task();
-  } 
-  else if (count == 3) {
-    time_to_go = duration;
-    count++;
-    target[L_SFE].th -= 0.5;
-    run_min_jerk_task();
-  } 
-  else if (count == 4) {
-    time_to_go = duration;
-    count++;
-    target[L_EB].th -= 0.5;
-    run_min_jerk_task();
-  } else if (count >4 && time_to_go <= 0) {
-    freeze();
+    } 
+    else if (count == 1) {
+      time_to_go = duration;
+      target[L_SAA].th -= 0.2;
+      target[L_EB].th -= 0.05;
+      run_min_jerk_task();
+      count++;
+    } 
+    else if (count == 2) {
+      time_to_go = duration;
+      target[L_SFE].th += 0.2;
+      run_min_jerk_task();
+      count++;
+    } 
+    else if (count == 3) {
+      time_to_go = duration;
+      target[L_SFE] = joint_default_state[L_SFE];
+      target[L_SAA] = joint_default_state[L_SAA];
+      target[L_EB] = joint_default_state[L_EB];
+      run_min_jerk_task();
+      count++;
+    } 
+    else {
+      mode = 0;
+      count = 0;
+      freeze();
+    }
   }
 
   return TRUE;
@@ -284,6 +290,13 @@ static double get_xddd(double x, double xd, double xdd, double xf, double xfd, d
 }
 //
 
+static double get_xdd2(double x, double xd, double xf, double t) {
+  int alpha = 25;
+  int beta = 6;
+  double res1 = alpha * (beta * (xf - x) - xd);
+  return res1 / t;
+}
+
 /*!*****************************************************************************
  *******************************************************************************
 \note  min_jerk_next_step
@@ -312,11 +325,14 @@ min_jerk_next_step (double x,double xd, double xdd, double t, double td, double 
 {
 
   // your code goes here ...
-  double xddd = get_xddd(x, xd, xdd, t, td, tdd, t_togo);
-  *x_next = x + *xd_next * dt;
- 
+  if (mode == 2) {
+    *xdd_next = get_xdd2(x, xd, t, t_togo);
+  } else {
+    double xddd = get_xddd(x, xd, xdd, t, td, tdd, t_togo);
+    *xdd_next = xdd + xddd * dt;
+  }
   *xd_next = xd + *xdd_next * dt;
-  *xdd_next = xdd + xddd * dt;
+  *x_next = x + *xd_next * dt;
   return TRUE;
 }
 
